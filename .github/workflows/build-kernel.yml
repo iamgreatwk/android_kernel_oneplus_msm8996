@@ -13,14 +13,8 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
-          apt-get update || apt-get update
-          apt-get install -y --fix-missing \
-            gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabi \
-            flex bison bc \
-            libssl-dev libelf-dev \
-            make git python || \
-          apt-get install -y --fix-missing \
+          apt-get update
+          apt-get install -y \
             gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabi \
             flex bison bc \
