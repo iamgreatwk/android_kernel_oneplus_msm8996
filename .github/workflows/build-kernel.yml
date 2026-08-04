@@ -30,6 +30,12 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             O=out lineageos_oneplus3_defconfig
+          cd out
+          scripts/config -e CONFIG_FRAMEBUFFER_CONSOLE
+          scripts/config -e CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY
+          scripts/config -e CONFIG_FONT_8x16
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          cd ..
           make ARCH=arm64 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
