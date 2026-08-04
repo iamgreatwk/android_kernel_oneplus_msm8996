@@ -1,0 +1,39 @@
+```
+name: Build OnePlus 3 Kernel
+
+on:
+  push:
+    branches: [lineage-18.1]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container: ubuntu:18.04
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            flex bison bc \
+            libssl-dev libelf-dev \
+            make git python
+
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+
+      - name: Build kernel
+        run: |
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+            O=out lineageos_oneplus3_defconfig
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+            O=out -j$(nproc)
+
+      - name: Upload kernel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oneplus3-kernel
+          path: out/arch/arm64/boot/Image.gz
+```
