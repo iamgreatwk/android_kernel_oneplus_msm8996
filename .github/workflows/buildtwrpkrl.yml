@@ -10,29 +10,50 @@ jobs:
 
     steps:
       - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: UTC
         run: |
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y \
-            git make flex bison bc libssl-dev libelf-dev git-lfs
+          # 1. 规避 tzdata 地区选择卡死
+          ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+          
+          # 2. 关键！开启 i386 架构，解决 GCC 4.9 缺失 32 位 Dynamic Linker 的问题
+          dpkg --add-architecture i386
+          apt-get update
+          
+          # 3. 安装 32 位兼容库和编译依赖
+          apt-get install -y --no-install-recommends \
+            git make flex bison bc libssl-dev libelf-dev git-lfs \
+            gcc g++ gcc-multilib g++-multilib \
+            libc6:i386 libstdc++6:i386 libncurses5:i386 zlib1g:i386 \
+            libncurses5-dev zip ccache cpio libglib2.0-0 kmod ca-certificates
 
       - name: Build Kernel
         run: |
           git lfs install
           
+          # 1. 克隆 GCC 工具链
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git -b lineage-19.1 gcc64
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git -b lineage-19.1 gcc32
           
           GCC64_PREFIX="$(pwd)/gcc64/bin/aarch64-linux-android-"
           GCC32_PREFIX="$(pwd)/gcc32/bin/arm-linux-androideabi-"
 
+          # 测试验证：如果 32 位库安装成功，这里能正常输出版本，不再报 Command Not Found
+          echo "=== Testing GCC Executable ==="
+          ${GCC64_PREFIX}gcc --version | head -n 1
+
+          # 2. 克隆内核源码
           git clone --depth 1 --branch lineage-16.0 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
 
+          # 3. 生成配置
           make ARCH=arm64 \
             CROSS_COMPILE=${GCC64_PREFIX} \
             CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
             O=out lineageos_oneplus3_defconfig
 
+          # 4. 开始编译
           make ARCH=arm64 \
             CROSS_COMPILE=${GCC64_PREFIX} \
             CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
