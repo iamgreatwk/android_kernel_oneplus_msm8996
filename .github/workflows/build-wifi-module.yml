@@ -6,8 +6,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    container: ubuntu:20.04
 
     steps:
+      - name: Install deps
+        run: |
+          apt-get update
+          apt-get install -y git make flex bison bc
+
       - name: Get LineageOS GCC 4.9 (64bit + 32bit)
         run: |
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
