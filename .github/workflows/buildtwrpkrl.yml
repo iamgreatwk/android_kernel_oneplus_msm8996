@@ -16,12 +16,13 @@ jobs:
         run: |
           ln -fs /usr/share/zoneinfo/UTC /etc/localtime
           
+          # 1. 开启 32 位支持并更新
           dpkg --add-architecture i386
           apt-get update
           
-          # 安装编译基础件 + 兼容库 + git-lfs
+          # 2. 安装全套编译依赖与运行库
           apt-get install -y --no-install-recommends \
-            build-essential git git-lfs make flex bison bc libssl-dev libelf-dev \
+            build-essential git make flex bison bc libssl-dev libelf-dev \
             gcc g++ gcc-multilib g++-multilib \
             libc6 libc6:i386 libstdc++6 libstdc++6:i386 \
             lib32z1 lib32ncurses5 lib32stdc++6 \
@@ -29,26 +30,34 @@ jobs:
             libncurses5-dev zip ccache cpio libglib2.0-0 kmod ca-certificates \
             curl wget file
 
-          # 初始化 git lfs
-          git lfs install
+          # 3. 核心修复：建立 64 位 Dynamic Linker 软链接
+          mkdir -p /lib64
+          ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
+
+          # 4. 建立 32 位 Dynamic Linker 软链接（防范 32 位二进制）
+          mkdir -p /lib
+          ln -sf /lib/i386-linux-gnu/ld-linux.so.2 /lib/ld-linux.so.2 || true
 
       - name: Build Kernel
         run: |
-          # 1. 克隆 GCC 工具链并拉取真正的 LFS 大文件二进制
+          # 1. 克隆 GCC 工具链（去掉不需要的 git lfs）
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git -b lineage-19.1 gcc64
-          cd gcc64 && git lfs pull && cd ..
-
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git -b lineage-19.1 gcc32
-          cd gcc32 && git lfs pull && cd ..
-
+          
           GCC64_PREFIX="$(pwd)/gcc64/bin/aarch64-linux-android-"
           GCC32_PREFIX="$(pwd)/gcc32/bin/arm-linux-androideabi-"
 
-          # 2. 验证 GCC 执行文件（此时已经拉取到了真实的 ELF 可执行文件）
+          # 2. 诊断与测试
+          echo "=== Inspecting GCC Binary ==="
+          file ${GCC64_PREFIX}gcc
+          
+          echo "=== Testing Linker and Dependencies ==="
+          ldd ${GCC64_PREFIX}gcc || true
+
           echo "=== Testing GCC Executable ==="
           ${GCC64_PREFIX}gcc --version
 
-          # 3. 克隆内核源码
+          # 3. 克隆内核源码并编译
           git clone --depth 1 --branch lineage-16.0 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
 
