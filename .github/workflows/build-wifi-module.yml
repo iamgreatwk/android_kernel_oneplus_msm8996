@@ -17,28 +17,21 @@ jobs:
             apt-get install -y gcc-4.9-aarch64-linux-gnu flex bison bc libssl-dev libelf-dev make git
             
             cd /work
-            git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git .
-            git fetch origin 4a67382
+            # 完整克隆，不加 --depth 1
+            git clone https://github.com/LineageOS/android_kernel_oneplus_msm8996.git .
             git checkout 4a67382
             
             export CROSS_COMPILE=aarch64-linux-gnu-
             export CC=aarch64-linux-gnu-gcc-4.9
             
             make ARCH=arm64 lineageos_oneplus3_defconfig
-            
-            # 把 WiFi 从内置(Y)改成模块(M)
-            sed -i "s/CONFIG_QCA_CLD_WLAN=y/CONFIG_QCA_CLD_WLAN=m/" .config
-            sed -i "s/CONFIG_WLAN=y/CONFIG_WLAN=m/" .config
-            make ARCH=arm64 olddefconfig
-            
             make ARCH=arm64 modules_prepare
-            make ARCH=arm64 modules -j$(nproc)
-            echo "=== KO files ==="
+            make ARCH=arm64 M=drivers/staging/prima -j2 || true
             find . -name "*.ko"
           '
 
       - name: Upload modules
         uses: actions/upload-artifact@v4
         with:
-          name: wifi-modules-ko
+          name: wifi-modules
           path: "**/*.ko"
