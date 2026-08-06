@@ -19,10 +19,26 @@ jobs:
           cd kernel
           git checkout 4a67382
           
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- lineageos_oneplus3_defconfig
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- modules_prepare
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- M=drivers/staging/prima -j$(nproc) || true
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- M=drivers/staging/qcacld-2.0 -j$(nproc) || true
+          make ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            lineageos_oneplus3_defconfig
+            
+          make ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            modules_prepare
+            
+          make ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            M=drivers/staging/prima -j$(nproc) || true
+            
+          make ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            M=drivers/staging/qcacld-2.0 -j$(nproc) || true
+            
           echo "=== KO files ==="
           find . -name "*.ko"
 
