@@ -1,4 +1,4 @@
-name: Build WiFi Module + Full Kernel (force load)
+name: Build Kernel (Android GCC 4.9)
 
 on:
   workflow_dispatch:
@@ -10,27 +10,32 @@ jobs:
 
     steps:
       - name: Install deps
-        run: |
-          apt-get update && apt-get install -y \
-            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-            flex bison bc libssl-dev libelf-dev make git
+        run: apt-get update && apt-get install -y git make flex bison bc
 
       - name: Build
         run: |
-          git clone https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
+          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
+          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
+          export PATH="$PWD/gcc64/bin:$PWD/gcc32/bin:$PATH"
+
+          git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
-          git checkout 4a67382
-          
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
             lineageos_oneplus3_defconfig
-          
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
             KCFLAGS="-Wno-error" -j$(nproc)
+
+          echo "=== Size check ==="
+          ls -la arch/arm64/boot/Image.gz*
+          echo "=== DTB check ==="
+          strings arch/arm64/boot/Image.gz-dtb | grep "qcom,mdss_mdp" | head -3
 
       - name: Upload kernel
         uses: actions/upload-artifact@v4
         with:
-          name: twrp-kernel-wifi
-          path: kernel/arch/arm64/boot/Image.gz
+          name: kernel-android-gcc49
+          path: kernel/arch/arm64/boot/Image.gz-dtb
