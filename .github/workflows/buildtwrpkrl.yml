@@ -6,7 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    # 关键修改：直接使用 Ubuntu 18.04 容器，天然兼容 GCC 4.9 的 32位依赖
     container: ubuntu:18.04
 
     steps:
@@ -17,42 +16,49 @@ jobs:
         run: |
           ln -fs /usr/share/zoneinfo/UTC /etc/localtime
           
-          # 1. 开启 i386 并换源更新（18.04 下非常稳定）
           dpkg --add-architecture i386
           apt-get update
           
-          # 2. 安装编译所需基础库及 32 位 C 运行库
+          # 安装编译基础件 + 兼容库 + git-lfs
           apt-get install -y --no-install-recommends \
-            git make flex bison bc libssl-dev libelf-dev \
+            build-essential git git-lfs make flex bison bc libssl-dev libelf-dev \
             gcc g++ gcc-multilib g++-multilib \
-            libc6:i386 libstdc++6:i386 libncurses5:i386 zlib1g:i386 \
+            libc6 libc6:i386 libstdc++6 libstdc++6:i386 \
+            lib32z1 lib32ncurses5 lib32stdc++6 \
+            libncurses5 libncurses5:i386 zlib1g:i386 \
             libncurses5-dev zip ccache cpio libglib2.0-0 kmod ca-certificates \
-            curl wget
+            curl wget file
+
+          # 初始化 git lfs
+          git lfs install
 
       - name: Build Kernel
         run: |
-          # 1. 克隆 GCC 工具链
+          # 1. 克隆 GCC 工具链并拉取真正的 LFS 大文件二进制
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git -b lineage-19.1 gcc64
+          cd gcc64 && git lfs pull && cd ..
+
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git -b lineage-19.1 gcc32
-          
+          cd gcc32 && git lfs pull && cd ..
+
           GCC64_PREFIX="$(pwd)/gcc64/bin/aarch64-linux-android-"
           GCC32_PREFIX="$(pwd)/gcc32/bin/arm-linux-androideabi-"
 
-          # 验证 GCC 是否能够正常运行
+          # 2. 验证 GCC 执行文件（此时已经拉取到了真实的 ELF 可执行文件）
           echo "=== Testing GCC Executable ==="
           ${GCC64_PREFIX}gcc --version
 
-          # 2. 克隆内核源码
+          # 3. 克隆内核源码
           git clone --depth 1 --branch lineage-16.0 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
 
-          # 3. 生成 Defconfig 配置
+          # 4. 生成 Defconfig 配置
           make ARCH=arm64 \
             CROSS_COMPILE=${GCC64_PREFIX} \
             CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
             O=out lineageos_oneplus3_defconfig
 
-          # 4. 开启编译
+          # 5. 开启编译
           make ARCH=arm64 \
             CROSS_COMPILE=${GCC64_PREFIX} \
             CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
