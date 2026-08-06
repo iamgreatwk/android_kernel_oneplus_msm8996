@@ -1,8 +1,7 @@
 name: Build OnePlus 3 Kernel
 
 on:
-  push:
-    branches: [lineage-18.1]
+
   workflow_dispatch:
 
 jobs:
