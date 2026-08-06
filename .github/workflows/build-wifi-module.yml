@@ -8,11 +8,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Install deps
-        run: |
-          apt-get update
-          apt-get install -y flex bison bc libssl-dev libelf-dev make git
-
       - name: Get LineageOS GCC 4.9
         run: |
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc49
@@ -34,5 +29,5 @@ jobs:
       - name: Upload modules
         uses: actions/upload-artifact@v4
         with:
-          name: wifi-modules-gcc49
-          path: "**/*.ko"
+          name: wifi-modules
+          path: kernel/**/*.ko
