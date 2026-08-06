@@ -9,33 +9,46 @@ jobs:
     container: ubuntu:20.04
 
     steps:
-      - name: Install deps
-        run: apt-get update && apt-get install -y git make flex bison bc libssl-dev libelf-dev git-lfs
+      - name: Install dependencies
+        run: |
+          dpkg --add-architecture i386
+          apt-get update && apt-get install -y \
+            git make flex bison bc libssl-dev libelf-dev git-lfs \
+            gcc g++ gcc-multilib g++-multilib libc6:i386 libncurses5-dev \
+            zip ccache cpio libglib2.0-0
 
-      - name: Build
+      - name: Build Kernel
         run: |
           git lfs install
           
+          # 1. 克隆 GCC 工具链
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git -b lineage-19.1 gcc64
-          cd gcc64 && git lfs pull && cd ..
-          
           git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git -b lineage-19.1 gcc32
-          cd gcc32 && git lfs pull && cd ..
           
-          ls -la gcc64/bin/ | head -5
-          export PATH="$PWD/gcc64/bin:$PWD/gcc32/bin:$PATH"
+          # 定义 GCC 工具链的前缀绝对路径
+          GCC64_PREFIX="$(pwd)/gcc64/bin/aarch64-linux-android-"
+          GCC32_PREFIX="$(pwd)/gcc32/bin/arm-linux-androideabi-"
 
+          # 验证编译器环境
+          echo "=== GCC Check ==="
+          ${GCC64_PREFIX}gcc --version | head -n 1
+
+          # 2. 克隆内核源码
           git clone --depth 1 --branch lineage-16.0 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
 
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+          # 3. 生成配置 (使用绝对路径 CROSS_COMPILE)
+          make ARCH=arm64 \
+            CROSS_COMPILE=${GCC64_PREFIX} \
+            CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
             O=out lineageos_oneplus3_defconfig
 
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+          # 4. 编译内核及镜像 (显式指定产物 Target)
+          make ARCH=arm64 \
+            CROSS_COMPILE=${GCC64_PREFIX} \
+            CROSS_COMPILE_ARM32=${GCC32_PREFIX} \
             KCFLAGS="-Wno-error" \
-            O=out -j$(nproc)
+            O=out -j$(nproc) Image.gz-dtb modules
 
       - name: Upload kernel
         uses: actions/upload-artifact@v4
