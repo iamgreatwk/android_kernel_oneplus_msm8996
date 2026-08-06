@@ -1,4 +1,4 @@
-name: Build Kernel (Google GCC 4.9)
+name: Build Kernel (lineage-16.0 + GCC 4.9)
 
 on:
   workflow_dispatch:
@@ -14,11 +14,11 @@ jobs:
 
       - name: Build
         run: |
-          git clone --depth 1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc64
-          git clone --depth 1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gcc32
+          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git -b lineage-19.1 gcc64
+          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git -b lineage-19.1 gcc32
           export PATH="$PWD/gcc64/bin:$PWD/gcc32/bin:$PATH"
 
-          git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
+          git clone --depth 1 --branch lineage-16.0 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
           cd kernel
 
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
@@ -38,5 +38,5 @@ jobs:
       - name: Upload kernel
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-android-gcc49
+          name: kernel-lineage16-gcc49
           path: kernel/out/arch/arm64/boot/Image.gz-dtb
