@@ -14,8 +14,8 @@ jobs:
 
       - name: Build
         run: |
-          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
-          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
+          git clone --depth 1 https://github.com/KudProject/aarch64-linux-android-4.9 gcc64
+          git clone --depth 1 https://github.com/KudProject/arm-linux-androideabi-4.9 gcc32
           export PATH="$PWD/gcc64/bin:$PWD/gcc32/bin:$PATH"
 
           git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
@@ -23,19 +23,20 @@ jobs:
 
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
             CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-            lineageos_oneplus3_defconfig
+            O=out lineageos_oneplus3_defconfig
 
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
             CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-            KCFLAGS="-Wno-error" -j$(nproc)
+            KCFLAGS="-Wno-error" \
+            O=out -j$(nproc)
 
-          echo "=== Size check ==="
-          ls -la arch/arm64/boot/Image.gz*
-          echo "=== DTB check ==="
-          strings arch/arm64/boot/Image.gz-dtb | grep "qcom,mdss_mdp" | head -3
+          echo "=== Size ==="
+          ls -la out/arch/arm64/boot/Image.gz*
+          echo "=== DTB ==="
+          strings out/arch/arm64/boot/Image.gz-dtb | grep "qcom,mdss_mdp" | head -3
 
       - name: Upload kernel
         uses: actions/upload-artifact@v4
         with:
           name: kernel-android-gcc49
-          path: kernel/arch/arm64/boot/Image.gz-dtb
+          path: kernel/out/arch/arm64/boot/Image.gz-dtb
