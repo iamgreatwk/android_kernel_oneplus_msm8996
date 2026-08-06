@@ -1,4 +1,4 @@
-name: Build WiFi Module for TWRP Kernel
+name: Build WiFi Module (GCC 4.9)
 
 on:
   workflow_dispatch:
@@ -8,30 +8,31 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Build in Ubuntu 16.04 with GCC 4.9
+      - name: Install deps
         run: |
-          docker run --rm -v $PWD:/work ubuntu:16.04 bash -c '
-            sed -i "s/archive.ubuntu.com/old-releases.ubuntu.com/g" /etc/apt/sources.list
-            sed -i "s/security.ubuntu.com/old-releases.ubuntu.com/g" /etc/apt/sources.list
-            apt-get update
-            apt-get install -y gcc-4.9-aarch64-linux-gnu flex bison bc libssl-dev libelf-dev make git
-            
-            cd /work
-            # 完整克隆，不加 --depth 1
-            git clone https://github.com/LineageOS/android_kernel_oneplus_msm8996.git .
-            git checkout 4a67382
-            
-            export CROSS_COMPILE=aarch64-linux-gnu-
-            export CC=aarch64-linux-gnu-gcc-4.9
-            
-            make ARCH=arm64 lineageos_oneplus3_defconfig
-            make ARCH=arm64 modules_prepare
-            make ARCH=arm64 M=drivers/staging/prima -j2 || true
-            find . -name "*.ko"
-          '
+          apt-get update
+          apt-get install -y flex bison bc libssl-dev libelf-dev make git
+
+      - name: Get LineageOS GCC 4.9
+        run: |
+          git clone --depth 1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc49
+          echo "$PWD/gcc49/bin" >> $GITHUB_PATH
+
+      - name: Get kernel source + build
+        run: |
+          git clone https://github.com/LineageOS/android_kernel_oneplus_msm8996.git kernel
+          cd kernel
+          git checkout 4a67382
+          
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- lineageos_oneplus3_defconfig
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- modules_prepare
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- M=drivers/staging/prima -j$(nproc) || true
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- M=drivers/staging/qcacld-2.0 -j$(nproc) || true
+          echo "=== KO files ==="
+          find . -name "*.ko"
 
       - name: Upload modules
         uses: actions/upload-artifact@v4
         with:
-          name: wifi-modules
+          name: wifi-modules-gcc49
           path: "**/*.ko"
